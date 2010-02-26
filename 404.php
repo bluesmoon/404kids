@@ -37,7 +37,7 @@ function main()
 		}
 	}
 
-	$missing_kids_url = str_replace('@state', $state, $yql_url);
+	$missing_kids_url = str_replace('@state', urlencode($state), $yql_url);
 	$json = http_get($missing_kids_url);
 	$o = json_decode($json, 1);
 	$children = $o['query']['results']['locations']['location'];
