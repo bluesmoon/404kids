@@ -1,16 +1,14 @@
 <?php
 
-$yql_url = "http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D'http%3A%2F%2Fwww.missingkidsmap.com%2Fread.php%3Fstate%3D%STATE_CODE%'&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=";
+$yql_url = "http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D'http%3A%2F%2Fwww.missingkidsmap.com%2Fread.php%3Fstate%3D@state'&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=&state=";
 
-$state_url = "http://query.yahooapis.com/v1/public/yql?q=select%20admin1.code%20from%20geo.places%20where%20woeid%3D%STATE_WOEID%&format=json&callback=";
-
-$geo_lookup = "http://geoip.pidgets.com?format=json&ip=";
+$geo_lookup = "http://query.yahooapis.com/v1/public/yql?q=select%20country.code%2C%20admin1.code%20from%20geo.places%20where%20woeid%20in%20(select%20place.woeid%20from%20flickr.places%20where%20(lat%2Clon)%20in%20(select%20Latitude%2C%20Longitude%20from%20ip.location%20where%20ip%3D@ip))&format=json&diagnostics=false&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=&ip=";
 
 $supported_countries = array('US', 'CA');
 
 function main()
 {
-	global $state_url, $yql_url, $supported_countries;
+	global $geo_lookup, $yql_url, $supported_countries;
 
 	$tstart = microtime(true);
 
@@ -27,16 +25,19 @@ function main()
 		}
 	}
 
-	/*
-	$json = http_get($geo_lookup . urlencode($ip));
+	$geo_lookup_url = $geo_lookup . urlencode($ip);
+	$json = http_get($geo_lookup_url);
 	$o = json_decode($json, 1);
 
-	if($o && in_array($o['country_code'], $supported_countries)) {
-		$state = $o['region'];
-	}
-	*/
+	if($o && $o['query'] && $o['query']['results']) {
+		$place = $o['query']['results']['place'];
 
-	$missing_kids_url = str_replace("%STATE_CODE%", $state, $yql_url);
+		if(in_array($place['country']['code'], $supported_countries)) {
+			$state = preg_replace('/^\w\w-/', '', $o['query']['results']['place']['admin1']['code']);
+		}
+	}
+
+	$missing_kids_url = str_replace('@state', $state, $yql_url);
 	$json = http_get($missing_kids_url);
 	$o = json_decode($json, 1);
 	$children = $o['query']['results']['locations']['location'];
@@ -86,32 +87,11 @@ function print_404($child)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<title>Welcome to the moon</title>
-
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-
-<link rel="shortcut icon" href="http://i1.bluesmoon.info/favicon.ico" type="image/x-icon">
-<link rel="openid.server" href="http://www.livejournal.com/openid/server.bml">
-<link rel="openid.delegate" href="http://bluesmoon.livejournal.com/">
-
-<link rel="pgpkeys" type="application/pgp-keys" title="Philip S Tellis's GPG Public Key" href="http://bluesmoon.info/bluesmoon.asc">
-<link rel="pgpkeys" type="application/pgp-keys" title="Philip S Tellis's GPG Public Key (Key server)" href="http://pgpkeys.mit.edu:11371/pks/lookup?op=get&amp;search=0x1F140E17">
-
-<link rel="stylesheet" type="text/css" href="http://a1.bluesmoon.info/blue.css">
-
+<!-- Put your page header here -->
 </head>
 
 <body class="error">
-<div id="content">
-<?php include "/home/ptellis/templates/header.html" ?>
-
- <div class="vcard">
-  <h1>Sorry, the page you're trying to find is missing.</h1>
-  <br>
- </div> <!-- end vcard -->
-
- <div id="body">
-  <div id="bodycontent">
+<h1>Sorry, the page you're trying to find is missing.</h1>
 
 <p>
 We may not be able to find the page, but perhaps you could help find this missing child:
@@ -127,26 +107,10 @@ We may not be able to find the page, but perhaps you could help find this missin
 
 <!--
 <?php
+// debugging info
 print_r($child);
 ?>
 -->
-
-  </div>
- </div> <!-- end body -->
- <div id="footer">
-
-  <ul>
-   <li class="feed"><a title="Flickr photostream" href="http://api.flickr.com/services/feeds/photos_public.gne?id=57155801@N00&amp;lang=en-us&amp;format=rss_200">PHOTO FEED</a></li>
-   <li class="feed"><a title="Tech blog" href="http://feeds.feedburner.com/bluestech">BLOG FEED</a></li>
-   <li><a title="Validate this page's markup" href="http://validator.w3.org/check?uri=referer">HTML 4.01</a></li>
-   <li><a title="Validate this page's CSS" href="http://jigsaw.w3.org/css-validator/check/referrer">CSS 2.1</a></li>
-   <li>&copy; PHILIP TELLIS 2009</li>
-  </ul>
-
- </div> <!-- end footer -->
-
-</div> <!-- end content -->
-
 
 </body>
 </html>
